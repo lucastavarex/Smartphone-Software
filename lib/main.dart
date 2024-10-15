@@ -44,11 +44,17 @@ class _TodoListState extends State<TodoList> {
 
     if (taskText.isNotEmpty && !taskExists) {
       setState(() {
-        _tasks.add(Task(text: taskText, isCompleted: false));
+        // Find the position to insert the new task
+        int insertIndex = _tasks.indexWhere((task) => task.isCompleted);
+        if (insertIndex == -1) {
+          _tasks.add(Task(text: taskText, isCompleted: false));
+        } else {
+          _tasks.insert(insertIndex, Task(text: taskText, isCompleted: false));
+        }
       });
       _taskController.clear();
     } else if (taskExists) {
-      // display a menssage if the task already exist
+      // display a message if the task already exists
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Esta tarefa já foi adicionada.'),
@@ -79,12 +85,19 @@ class _TodoListState extends State<TodoList> {
 
   void _toggleCompletion(int index) {
     setState(() {
-      _tasks[index].isCompleted = !_tasks[index].isCompleted;
-      Task completedTask = _tasks.removeAt(index);
-      if (completedTask.isCompleted) {
-        _tasks.add(completedTask);
+      Task toggledTask = _tasks.removeAt(index);
+      toggledTask.isCompleted = !toggledTask.isCompleted;
+      if (toggledTask.isCompleted) {
+        // Find the position to insert the completed task
+        int insertIndex = _tasks.indexWhere((task) => task.isCompleted);
+        if (insertIndex == -1) {
+          _tasks.add(toggledTask);
+        } else {
+          _tasks.insert(insertIndex, toggledTask);
+        }
       } else {
-        _tasks.insert(0, completedTask);
+        // Insert the uncompleted task at the beginning of the list
+        _tasks.insert(0, toggledTask);
       }
     });
   }
