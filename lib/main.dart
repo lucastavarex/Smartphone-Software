@@ -38,11 +38,23 @@ class _TodoListState extends State<TodoList> {
 
   void _addTask() {
     String taskText = _taskController.text.trim();
-    if (taskText.isNotEmpty) {
+
+    // it will check if the task already exist
+    bool taskExists = _tasks.any((task) => task.text == taskText);
+
+    if (taskText.isNotEmpty && !taskExists) {
       setState(() {
         _tasks.add(Task(text: taskText, isCompleted: false));
       });
       _taskController.clear();
+    } else if (taskExists) {
+      // display a menssage if the task already exist
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Esta tarefa já foi adicionada.'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
