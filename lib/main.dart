@@ -44,7 +44,7 @@ class _TodoListState extends State<TodoList> {
 
     if (taskText.isNotEmpty && !taskExists) {
       setState(() {
-        // Find the position to insert the new task
+        // find the position to insert the new task
         int insertIndex = _tasks.indexWhere((task) => task.isCompleted);
         if (insertIndex == -1) {
           _tasks.add(Task(text: taskText, isCompleted: false));
@@ -88,7 +88,7 @@ class _TodoListState extends State<TodoList> {
       Task toggledTask = _tasks.removeAt(index);
       toggledTask.isCompleted = !toggledTask.isCompleted;
       if (toggledTask.isCompleted) {
-        // Find the position to insert the completed task
+        // find the position to insert the completed task
         int insertIndex = _tasks.indexWhere((task) => task.isCompleted);
         if (insertIndex == -1) {
           _tasks.add(toggledTask);
@@ -96,7 +96,7 @@ class _TodoListState extends State<TodoList> {
           _tasks.insert(insertIndex, toggledTask);
         }
       } else {
-        // Insert the uncompleted task at the beginning of the list
+        // insert the uncompleted task at the beginning of the list
         _tasks.insert(0, toggledTask);
       }
     });
