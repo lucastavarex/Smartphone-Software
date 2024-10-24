@@ -469,18 +469,21 @@ Future<void> salvarTarefas(String email, String token, List<Task> tasks) async {
     'email': email,
     'valor': tasks
         .map((task) => {
-              'nome': task.text,
-              'status': task.isCompleted,
+              'titulo': task.text,
+              'concluida': task.isCompleted,
+              'ordem': tasks.indexOf(task) + 1,
             })
         .toList(),
   });
 
   try {
-    final response = await http.post(url, headers: headers, body: body);
+    final response = await http.patch(url, headers: headers, body: body);
 
-    if (response.statusCode != 201) {
+    if (response.statusCode != 200 && response.statusCode != 204) {
       print(
           'Erro ao salvar tarefas: ${response.statusCode} - ${response.body}');
+    } else {
+      print('Tarefas salvas com sucesso.');
     }
   } catch (e) {
     print('Erro: ${e.toString()}');
