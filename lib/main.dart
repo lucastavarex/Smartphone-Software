@@ -34,10 +34,12 @@ class _LoginScreenState extends State<LoginScreen> {
     final token = await fazerLogin(email, senha);
 
     if (token.isNotEmpty) {
+      final tasks = await buscarTarefas(email, token);
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-            builder: (context) => TodoApp(token: token, email: email)),
+            builder: (context) =>
+                TodoApp(token: token, email: email, tasks: tasks)),
       );
     } else {
       setState(() {
@@ -178,14 +180,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
 class TodoApp extends StatelessWidget {
   final String token;
   final String email;
+  final List<Task> tasks;
 
-  TodoApp({required this.token, required this.email});
+  TodoApp({required this.token, required this.email, required this.tasks});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Lista de Tarefas',
-      home: TodoList(token: token, email: email),
+      home: TodoList(token: token, email: email, tasks: tasks),
       debugShowCheckedModeBanner: false,
     );
   }
@@ -194,16 +197,23 @@ class TodoApp extends StatelessWidget {
 class TodoList extends StatefulWidget {
   final String token;
   final String email;
+  final List<Task> tasks;
 
-  TodoList({required this.token, required this.email});
+  TodoList({required this.token, required this.email, required this.tasks});
 
   @override
   _TodoListState createState() => _TodoListState();
 }
 
 class _TodoListState extends State<TodoList> {
-  final List<Task> _tasks = [];
+  late List<Task> _tasks;
   final TextEditingController _taskController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _tasks = widget.tasks;
+  }
 
   void _addTask() {
     String taskText = _taskController.text.trim();
@@ -395,6 +405,13 @@ class Task {
       {required this.text,
       required this.isCompleted,
       this.isPendingDelete = false});
+
+  factory Task.fromJson(Map<String, dynamic> json) {
+    return Task(
+      text: json['titulo'],
+      isCompleted: json['concluida'],
+    );
+  }
 }
 
 Future<String> fazerLogin(String email, String senha) async {
@@ -487,5 +504,31 @@ Future<void> salvarTarefas(String email, String token, List<Task> tasks) async {
     }
   } catch (e) {
     print('Erro: ${e.toString()}');
+  }
+}
+
+Future<List<Task>> buscarTarefas(String email, String token) async {
+  final url = Uri.https('barra.cos.ufrj.br:443', '/rest/tarefas');
+
+  final headers = {
+    'Authorization': 'Bearer $token',
+    'accept': 'application/json',
+  };
+
+  try {
+    final response = await http.get(url, headers: headers);
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final tasksJson =
+          data.firstWhere((user) => user['email'] == email)['valor'];
+      return (tasksJson as List)
+          .map((taskJson) => Task.fromJson(taskJson))
+          .toList();
+    } else {
+      return [];
+    }
+  } catch (e) {
+    return [];
   }
 }
