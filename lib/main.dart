@@ -1,33 +1,202 @@
-import 'package:flutter/material.dart';
 import 'dart:async';
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 void main() {
-  runApp(TodoApp());
+  runApp(MyApp());
 }
 
-class Task {
-  String text;
-  bool isCompleted;
-  bool isPendingDelete;
-
-  Task(
-      {required this.text,
-      required this.isCompleted,
-      this.isPendingDelete = false});
-}
-
-class TodoApp extends StatelessWidget {
+class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Trabalho 3 - Lista de Tarefas',
-      home: TodoList(),
+      title: 'Lista de Tarefas',
+      home: LoginScreen(),
+      debugShowCheckedModeBanner: false,
+    );
+  }
+}
+
+class LoginScreen extends StatefulWidget {
+  @override
+  _LoginScreenState createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  String _errorMessage = '';
+
+  Future<void> _login() async {
+    final email = _emailController.text.trim();
+    final senha = _passwordController.text.trim();
+    final token = await fazerLogin(email, senha);
+
+    if (token.isNotEmpty) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+            builder: (context) => TodoApp(token: token, email: email)),
+      );
+    } else {
+      setState(() {
+        _errorMessage = 'Login falhou. Verifique suas credenciais.';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Login')),
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            TextField(
+              controller: _emailController,
+              decoration: InputDecoration(labelText: 'Email'),
+            ),
+            TextField(
+              controller: _passwordController,
+              decoration: InputDecoration(labelText: 'Senha'),
+              obscureText: true,
+            ),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _login,
+              child: Text('Login'),
+            ),
+            if (_errorMessage.isNotEmpty)
+              Text(
+                _errorMessage,
+                style: TextStyle(color: Colors.red),
+              ),
+            TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => RegisterScreen()),
+                );
+              },
+              child: Text('Não tem uma conta? Cadastre-se'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class RegisterScreen extends StatefulWidget {
+  @override
+  _RegisterScreenState createState() => _RegisterScreenState();
+}
+
+class _RegisterScreenState extends State<RegisterScreen> {
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
+  String _errorMessage = '';
+
+  Future<void> _register() async {
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
+    final password = _passwordController.text.trim();
+    final confirmPassword = _confirmPasswordController.text.trim();
+
+    if (password != confirmPassword) {
+      setState(() {
+        _errorMessage = 'As senhas não coincidem.';
+      });
+      return;
+    }
+
+    final success = await registrarUsuario(name, email, phone, password);
+
+    if (success) {
+      Navigator.pop(context);
+    } else {
+      setState(() {
+        _errorMessage = 'Erro ao registrar. Tente novamente.';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Cadastro')),
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            TextField(
+              controller: _nameController,
+              decoration: InputDecoration(labelText: 'Nome'),
+            ),
+            TextField(
+              controller: _emailController,
+              decoration: InputDecoration(labelText: 'Email'),
+            ),
+            TextField(
+              controller: _phoneController,
+              decoration: InputDecoration(labelText: 'Celular'),
+            ),
+            TextField(
+              controller: _passwordController,
+              decoration: InputDecoration(labelText: 'Senha'),
+              obscureText: true,
+            ),
+            TextField(
+              controller: _confirmPasswordController,
+              decoration: InputDecoration(labelText: 'Confirme a Senha'),
+              obscureText: true,
+            ),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _register,
+              child: Text('Cadastrar'),
+            ),
+            if (_errorMessage.isNotEmpty)
+              Text(
+                _errorMessage,
+                style: TextStyle(color: Colors.red),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class TodoApp extends StatelessWidget {
+  final String token;
+  final String email;
+
+  TodoApp({required this.token, required this.email});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Lista de Tarefas',
+      home: TodoList(token: token, email: email),
       debugShowCheckedModeBanner: false,
     );
   }
 }
 
 class TodoList extends StatefulWidget {
+  final String token;
+  final String email;
+
+  TodoList({required this.token, required this.email});
+
   @override
   _TodoListState createState() => _TodoListState();
 }
@@ -39,12 +208,10 @@ class _TodoListState extends State<TodoList> {
   void _addTask() {
     String taskText = _taskController.text.trim();
 
-    // it will check if the task already exist
     bool taskExists = _tasks.any((task) => task.text == taskText);
 
     if (taskText.isNotEmpty && !taskExists) {
       setState(() {
-        // find the position to insert the new task
         int insertIndex = _tasks.indexWhere((task) => task.isCompleted);
         if (insertIndex == -1) {
           _tasks.add(Task(text: taskText, isCompleted: false));
@@ -53,8 +220,8 @@ class _TodoListState extends State<TodoList> {
         }
       });
       _taskController.clear();
+      _saveTasks();
     } else if (taskExists) {
-      // display a message if the task already exists
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Esta tarefa já foi adicionada.'),
@@ -73,6 +240,7 @@ class _TodoListState extends State<TodoList> {
         setState(() {
           _tasks.removeAt(index);
         });
+        _saveTasks();
       }
     });
   }
@@ -88,7 +256,6 @@ class _TodoListState extends State<TodoList> {
       Task toggledTask = _tasks.removeAt(index);
       toggledTask.isCompleted = !toggledTask.isCompleted;
       if (toggledTask.isCompleted) {
-        // find the position to insert the completed task
         int insertIndex = _tasks.indexWhere((task) => task.isCompleted);
         if (insertIndex == -1) {
           _tasks.add(toggledTask);
@@ -96,10 +263,14 @@ class _TodoListState extends State<TodoList> {
           _tasks.insert(insertIndex, toggledTask);
         }
       } else {
-        // insert the uncompleted task at the beginning of the list
         _tasks.insert(0, toggledTask);
       }
     });
+    _saveTasks();
+  }
+
+  Future<void> _saveTasks() async {
+    await salvarTarefas(widget.email, widget.token, _tasks);
   }
 
   @override
@@ -107,7 +278,7 @@ class _TodoListState extends State<TodoList> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          '3° Trabalho - Lista de Tarefas',
+          'Lista de Tarefas',
           style: TextStyle(color: Colors.white),
         ),
         centerTitle: true,
@@ -212,5 +383,106 @@ class _TodoListState extends State<TodoList> {
         ],
       ),
     );
+  }
+}
+
+class Task {
+  String text;
+  bool isCompleted;
+  bool isPendingDelete;
+
+  Task(
+      {required this.text,
+      required this.isCompleted,
+      this.isPendingDelete = false});
+}
+
+Future<String> fazerLogin(String email, String senha) async {
+  final url = Uri.https('barra.cos.ufrj.br:443', '/rest/rpc/fazer_login');
+
+  final headers = {
+    'accept': 'application/json',
+    'Content-Type': 'application/json',
+  };
+
+  final body = json.encode({
+    'email': email,
+    'senha': senha,
+  });
+
+  try {
+    final response = await http.post(url, headers: headers, body: body);
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final token = data['token'];
+      return token;
+    } else {
+      return '';
+    }
+  } catch (e) {
+    return '';
+  }
+}
+
+Future<bool> registrarUsuario(
+    String nome, String email, String celular, String senha) async {
+  final url = Uri.https('barra.cos.ufrj.br:443', 'rest/rpc/registra_usuario');
+
+  final headers = {
+    'accept': 'application/json',
+    'Content-Type': 'application/json',
+  };
+
+  final body = json.encode({
+    'nome': nome,
+    'email': email,
+    'celular': celular,
+    'senha': senha,
+  });
+
+  try {
+    final response = await http.post(url, headers: headers, body: body);
+
+    if (response.statusCode == 200) {
+      return true;
+    } else {
+      final errorData = jsonDecode(response.body);
+      print('Erro ao registrar: ${errorData['message']}');
+      return false;
+    }
+  } catch (e) {
+    print('Erro: ${e.toString()}');
+    return false;
+  }
+}
+
+Future<void> salvarTarefas(String email, String token, List<Task> tasks) async {
+  final url = Uri.https('barra.cos.ufrj.br:443', '/rest/tarefas');
+
+  final headers = {
+    'Authorization': 'Bearer $token',
+    'Content-Type': 'application/json',
+  };
+
+  final body = json.encode({
+    'email': email,
+    'valor': tasks
+        .map((task) => {
+              'nome': task.text,
+              'status': task.isCompleted,
+            })
+        .toList(),
+  });
+
+  try {
+    final response = await http.post(url, headers: headers, body: body);
+
+    if (response.statusCode != 201) {
+      print(
+          'Erro ao salvar tarefas: ${response.statusCode} - ${response.body}');
+    }
+  } catch (e) {
+    print('Erro: ${e.toString()}');
   }
 }
