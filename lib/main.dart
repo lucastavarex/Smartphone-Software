@@ -27,23 +27,38 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   String _errorMessage = '';
+  bool _isLoading = false;
 
   Future<void> _login() async {
-    final email = _emailController.text.trim();
-    final senha = _passwordController.text.trim();
-    final token = await fazerLogin(email, senha);
+    setState(() {
+      _isLoading = true;
+    });
 
-    if (token.isNotEmpty) {
-      final tasks = await buscarTarefas(email, token);
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-            builder: (context) =>
-                TodoApp(token: token, email: email, tasks: tasks)),
-      );
-    } else {
+    try {
+      final email = _emailController.text.trim();
+      final senha = _passwordController.text.trim();
+      final token = await fazerLogin(email, senha);
+
+      if (token.isNotEmpty) {
+        final tasks = await buscarTarefas(email, token);
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+              builder: (context) =>
+                  TodoApp(token: token, email: email, tasks: tasks)),
+        );
+      } else {
+        setState(() {
+          _errorMessage = 'Login falhou. Verifique suas credenciais.';
+        });
+      }
+    } catch (e) {
       setState(() {
-        _errorMessage = 'Login falhou. Verifique suas credenciais.';
+        _errorMessage = 'Erro ao fazer login. Tente novamente mais tarde.';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
       });
     }
   }
@@ -51,41 +66,128 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Login')),
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: _emailController,
-              decoration: InputDecoration(labelText: 'Email'),
-            ),
-            TextField(
-              controller: _passwordController,
-              decoration: InputDecoration(labelText: 'Senha'),
-              obscureText: true,
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _login,
-              child: Text('Login'),
-            ),
-            if (_errorMessage.isNotEmpty)
-              Text(
-                _errorMessage,
-                style: TextStyle(color: Colors.red),
+      body: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.black, Colors.black, Colors.black],
               ),
-            TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => RegisterScreen()),
-                );
-              },
-              child: Text('Não tem uma conta? Cadastre-se'),
             ),
-          ],
-        ),
+          ),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Card(
+                elevation: 8,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      CircleAvatar(
+                        radius: 40,
+                        backgroundColor: Colors.white.withOpacity(0.9),
+                        child:
+                            Icon(Icons.person, size: 60, color: Colors.black),
+                      ),
+                      SizedBox(height: 32),
+                      TextField(
+                        controller: _emailController,
+                        style: TextStyle(color: Colors.black87),
+                        decoration: InputDecoration(
+                          labelText: 'Email',
+                          labelStyle: TextStyle(color: Colors.black54),
+                          prefixIcon: Icon(Icons.email, color: Colors.black),
+                          enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.black),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                      TextField(
+                        controller: _passwordController,
+                        style: TextStyle(color: Colors.black87),
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          labelText: 'Senha',
+                          labelStyle: TextStyle(color: Colors.black54),
+                          prefixIcon: Icon(Icons.lock, color: Colors.black),
+                          enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.black),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.black),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _login,
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: Size(double.infinity, 48),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          backgroundColor: Colors.black,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: _isLoading
+                            ? CircularProgressIndicator.adaptive(
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.white),
+                              )
+                            : Text('Entrar'),
+                      ),
+                      SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Não tem uma conta?',
+                            style: TextStyle(color: Colors.black54),
+                          ),
+                          SizedBox(width: 4),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => RegisterScreen()),
+                              );
+                            },
+                            child: Text(
+                              'Cadastre-se',
+                              style: TextStyle(color: Colors.black),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (_errorMessage.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 16.0),
+                          child: Text(
+                            _errorMessage,
+                            style: TextStyle(color: Colors.redAccent),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -134,43 +236,84 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('Cadastro')),
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: _nameController,
-              decoration: InputDecoration(labelText: 'Nome'),
-            ),
-            TextField(
-              controller: _emailController,
-              decoration: InputDecoration(labelText: 'Email'),
-            ),
-            TextField(
-              controller: _phoneController,
-              decoration: InputDecoration(labelText: 'Celular'),
-            ),
-            TextField(
-              controller: _passwordController,
-              decoration: InputDecoration(labelText: 'Senha'),
-              obscureText: true,
-            ),
-            TextField(
-              controller: _confirmPasswordController,
-              decoration: InputDecoration(labelText: 'Confirme a Senha'),
-              obscureText: true,
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _register,
-              child: Text('Cadastrar'),
-            ),
-            if (_errorMessage.isNotEmpty)
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
               Text(
-                _errorMessage,
-                style: TextStyle(color: Colors.red),
+                'Crie sua conta',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
               ),
-          ],
+              SizedBox(height: 20),
+              TextField(
+                controller: _nameController,
+                decoration: InputDecoration(
+                  labelText: 'Nome',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.person),
+                ),
+              ),
+              SizedBox(height: 10),
+              TextField(
+                controller: _emailController,
+                decoration: InputDecoration(
+                  labelText: 'Email',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.email),
+                ),
+              ),
+              SizedBox(height: 10),
+              TextField(
+                controller: _phoneController,
+                decoration: InputDecoration(
+                  labelText: 'Celular',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.phone),
+                ),
+              ),
+              SizedBox(height: 10),
+              TextField(
+                controller: _passwordController,
+                decoration: InputDecoration(
+                  labelText: 'Senha',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.lock),
+                ),
+                obscureText: true,
+              ),
+              SizedBox(height: 10),
+              TextField(
+                controller: _confirmPasswordController,
+                decoration: InputDecoration(
+                  labelText: 'Confirme a Senha',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.lock),
+                ),
+                obscureText: true,
+              ),
+              SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _register,
+                child: Text('Cadastrar'),
+                style: ElevatedButton.styleFrom(
+                  padding: EdgeInsets.symmetric(vertical: 15),
+                  textStyle: TextStyle(fontSize: 18),
+                ),
+              ),
+              if (_errorMessage.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Text(
+                    _errorMessage,
+                    style: TextStyle(color: Colors.red),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -496,7 +639,9 @@ Future<void> salvarTarefas(String email, String token, List<Task> tasks) async {
   try {
     final response = await http.patch(url, headers: headers, body: body);
 
-    if (response.statusCode != 200 && response.statusCode != 204) {
+    if (response.statusCode != 200 &&
+        response.statusCode != 204 &&
+        response.statusCode != 201) {
       print(
           'Erro ao salvar tarefas: ${response.statusCode} - ${response.body}');
     } else {
@@ -521,14 +666,49 @@ Future<List<Task>> buscarTarefas(String email, String token) async {
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       final tasksJson =
-          data.firstWhere((user) => user['email'] == email)['valor'];
-      return (tasksJson as List)
-          .map((taskJson) => Task.fromJson(taskJson))
-          .toList();
+          data.firstWhere((user) => user['email'] == email, orElse: () => null);
+
+      if (tasksJson != null && (tasksJson['valor'] as List).isNotEmpty) {
+        return (tasksJson['valor'] as List)
+            .map((taskJson) => Task.fromJson(taskJson))
+            .toList();
+      } else {
+        // Cria uma lista vazia se não houver tarefas
+        await criarListaVazia(email, token);
+        return [];
+      }
     } else {
       return [];
     }
   } catch (e) {
+    print('Erro ao buscar tarefas: ${e.toString()}');
     return [];
+  }
+}
+
+Future<void> criarListaVazia(String email, String token) async {
+  final url = Uri.https('barra.cos.ufrj.br:443', '/rest/tarefas');
+
+  final headers = {
+    'Authorization': 'Bearer $token',
+    'Content-Type': 'application/json',
+  };
+
+  final body = json.encode({
+    'email': email,
+    'valor': [], // Lista vazia
+  });
+
+  try {
+    final response = await http.post(url, headers: headers, body: body);
+
+    if (response.statusCode == 201 || response.statusCode == 204) {
+      print('Lista vazia criada com sucesso.');
+    } else {
+      print(
+          'Erro ao criar lista vazia: ${response.statusCode} - ${response.body}');
+    }
+  } catch (e) {
+    print('Erro ao criar lista vazia: ${e.toString()}');
   }
 }
